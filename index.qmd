@@ -1,5 +1,5 @@
 ---
-title: "Building an AI-Powered Podcast Search: R Weekly Highlights Chatbot"
+title: "Building an R Weekly Highlights Podcast Assistant!"
 author: "Nils Indreiten"
 date: today
 format:
@@ -7,7 +7,6 @@ format:
         toc: true
         toc-depth: 3
         code-fold: true
-        code-tools: true
         theme: journal
 execute:
     eval: false
