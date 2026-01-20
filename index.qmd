@@ -8,6 +8,10 @@ format:
         toc-depth: 3
         code-fold: true
         theme: journal
+        code-links:
+          - text: GitHub
+            icon: github
+            href: https://github.com/Jokasan/r-weekly_chatbot
 execute:
     eval: false
     echo: true
