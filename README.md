@@ -4,7 +4,6 @@ An AI-powered chatbot that answers questions about the R Weekly Highlights podca
 
 [**Try the live app →**](https://jokasan-r-weekly-chatbot.share.connect.posit.cloud)
 
-
 This project [scrapes podcast transcripts using the code shares by Yann Tourman](https://bsky.app/profile/yannco.bsky.social/post/3mbarm75kik2j), builds a vector database for semantic search, and provides an interactive chat interface to query podcast content.
 
 ## Files Overview
