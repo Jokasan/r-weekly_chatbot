@@ -12,7 +12,7 @@ messages <- '
 🎙️ **Hello, R enthusiast!** I\'m your friendly R Weekly Highlights podcast assistant! 
 
 I\'ve listened to episodes 200-217 so you don\'t have to search through hours of content. Ask me anything about what Eric and Mike discussed!
-⚠️ Whilst RAG with llm is powerful, it might not always ahve the correct answer. Please check out the episodes directly for more details!
+⚠️ Whilst RAG with LLMs is powerful, it might not always provide the correct answer. Please check out the episodes directly for more details!
 
 💡 **Try these to get started:**
 
