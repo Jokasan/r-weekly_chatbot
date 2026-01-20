@@ -6,7 +6,8 @@
 .Ruserdata
 .index_files
 
-# DuckDB files
+# DuckDB files (too large for GitHub, rebuild with build_store.r)
+*.duckdb
 *.duckdb.wal
 
 # API Keys and secrets
