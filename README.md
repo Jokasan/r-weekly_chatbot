@@ -15,7 +15,8 @@ This project [scrapes podcast transcripts using the code shares by Yann Tourman]
 
 ### RAG Pipeline
 - **`build_store.r`** - Production script that chunks all transcripts into ~100 token segments, creates embeddings using OpenAI's `text-embedding-3-small` model, and builds a DuckDB vector store with BM25 and vector search indices.
-- **`rweeklypodcast.ragnar.duckdb`** - The vector database containing embedded transcript chunks (episodes 200-217 due to deployment size constraints).
+- **`rweeklypodcast.ragnar.duckdb`** - The vector database containing embedded transcript chunks (episodes 200-217 due to deployment size constraints). Needs 
+to be created using the `build_store.r` script. I tried to include it in the repo but it was too large.
 
 ### Application
 - **`app.R`** - Shiny app with chat interface using `shinychat` and `ellmer`. Connects to the vector store in read-only mode and registers it as a tool for the OpenAI chat model.
