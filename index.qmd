@@ -1,0 +1,463 @@
+---
+title: "Building an AI-Powered Podcast Search: R Weekly Highlights Chatbot"
+author: "Nils Indreiten"
+date: today
+format:
+    html:
+        toc: true
+        toc-depth: 3
+        code-fold: true
+        code-tools: true
+        theme: journal
+execute:
+    eval: false
+    echo: true
+---
+
+## Introduction
+
+This project demonstrates how to build an AI-powered chatbot that answers questions about the R Weekly Highlights podcast content using Retrieval Augmented Generation (RAG). The application allows users to query transcripts from the R Weekly Highlights podcast through a conversational interface. The idea came to me after listening to episode 217, where [Yann Tourman's episode length analysis](https://bsky.app/profile/yannco.bsky.social/post/3mbarm75kik2j) was shouted out. I thought this would be a great use case to apply the [Retrieval-Augmented Generation: Setting up a Knowledge Store in R](https://www.jumpingrivers.com/blog/retrieval-augmented-generation-database-workflow-r/), in practice! [You can check out the 
+resulting Shiny app here](https://jokasan-r-weekly-chatbot.share.connect.posit.cloud). So without further ado let's begin! 
+
+### Project Goals
+
+-   Scrape and process podcast transcripts from the R Weekly Highlights podcast
+-   Implement a RAG system using vector embeddings to enable semantic search
+-   Build an interactive Shiny chat application
+-   Deploy the application with Posit Connect Cloud for public access to share with the community
+
+## Data Understanding
+
+### Scraping Podcast Transcripts
+
+The first challenge was extracting transcripts from the podcast hosting platform (Podhome.fm). [I used the script Yann shared](https://github.com/iamYannC/r-podcast/blob/main/R/r%20weekly%20podcast%20scrape.R), but with a few key distinctions. Initial attempts to scrape transcript content directly from the page HTML failed because transcripts are loaded dynamically via JavaScript. So instead we had to use the scrape the episodes using a two-step approach:
+
+1.  **Extract Episode IDs**: Parse the episode page HTML to find the episode ID embedded in JavaScript
+2.  **API Endpoint Access**: Fetch transcripts from the API endpoint: `/api/transcript/{episode-id}`
+
+```{r}
+#| eval: true
+#| echo: false
+readRenviron(".Renviron")
+```
+
+```{r}
+#| eval: false
+#| code-summary: "Transcript Scraping Function"
+
+# Key function from scraping_episodes_with_transcripts.R
+get_transcript <- function(ep_url) {
+  # Read the episode page
+  page <- read_html(ep_url)
+  
+  # Extract episode ID from embedded JavaScript
+  scripts <- page |> html_elements("script") |> html_text()
+  episode_id_pattern <- '"episodeId":"([a-f0-9-]+)"'
+  episode_id <- str_extract(scripts, episode_id_pattern) |>
+    na.omit() |>
+    first() |>
+    str_extract("([a-f0-9-]+)$")
+  
+  # Construct API URL and fetch transcript
+  api_url <- paste0("https://serve.podhome.fm/api/transcript/", episode_id)
+  response <- httr::GET(api_url)
+  
+  # Parse and clean the transcript text
+  transcript_html <- content(response, as = "text", encoding = "UTF-8")
+  transcript_text <- read_html(transcript_html) |> html_text2()
+  
+  return(transcript_text)
+}
+```
+
+Once we had that to hand, we could add it to the original function from Yann, and neatly have everything, in one dataframe:
+
+```{r}
+#| eval: false
+#| code-summary: "Putting Episodes into 1 dataframe"
+get_ep_metadata <- function(n_episodes = NULL){
+  # Vector of links to all episodes
+  eps <- get_href(".episodeLink")
+  
+    if(!is.null(n_episodes)) {
+    eps <- head(eps, n_episodes)
+  }
+  
+  ep_link <- paste0("https://serve.podhome.fm", eps) 
+  ep_name <-  ep_link |> stri_replace_last_regex("^.*/","") |> snakecase::to_snake_case()
+  
+  episode <- matrix(data = c(ep_link, ep_name),ncol=2,dimnames = list(NULL, c("link", "name"))) 
+  
+  date_duration <- get_text2(".is-tablet+ .has-text-grey")
+  
+  # Split date and duration
+  date_duration <- map(date_duration, \(s) s |>
+                         stri_split_fixed(" &vert; ") |>
+                         unlist() |>
+                         stri_trim_both())
+  ep_date <- map_chr(date_duration, \(x) x[[1]]) |> dmy()
+  ep_duration <- map_chr(date_duration, \(x) x[[2]]) |> hms()
+  
+  # Get short description
+  ep_desc_short <- get_text2(".is-hidden-touch")
+  ep_desc_short <- ep_desc_short[seq(2, length(ep_desc_short), 2)] |> stri_trim_both() # Some duplication, plus the first one is not an episode description
+
+  # A fix due to multiple pages: need to filter header from each page
+  indx_remove <- stri_detect_fixed(ep_desc_short,'Contact') |> which()
+  ep_description_short <- ep_desc_short[-indx_remove]
+  
+  # Limit other vectors to match number of episodes if testing
+  if(!is.null(n_episodes)) {
+    ep_date <- head(ep_date, n_episodes)
+    ep_duration <- head(ep_duration, n_episodes)
+    ep_description_short <- head(ep_description_short, n_episodes)
+  }
+  
+  # Scrape transcripts from each episode page
+  message("Scraping transcripts from individual episode pages...")
+  ep_transcript <- map_chr(ep_link, get_transcript, .progress = TRUE)
+  
+  tibble::tibble(ep_name, ep_date, ep_duration, ep_description_short, ep_transcript)
+}
+
+# Put all into a nice
+all_episodes <- get_ep_metadata()
+```
+
+The next thing we had to do, was to process the scraping in batches due to hitting API limits. Therefore, we did the following, with some time in between each batch:
+
+```{r}
+#| eval: false
+#| code-summary: "Transcript Scraping Processing with Buffer"
+batch_size <- 20
+all_results <- list()
+
+for(i in seq(1, 218, by = batch_size)) {
+  end_idx <- min(i + batch_size - 1, 218)
+  cat(sprintf("Processing episodes %d to %d\n", i, end_idx))
+  
+  batch <- get_ep_metadata(n_episodes = end_idx)[i:min(end_idx, nrow(all_episodes)),]
+  all_results[[length(all_results) + 1]] <- batch
+  
+  # Pause between batches
+  if(end_idx < 218) {
+    cat("Pausing for 10 seconds...\n")
+    Sys.sleep(10)
+  }
+}
+
+all_episodes <- bind_rows(all_results)
+```
+
+Once that was done, we wrote the file to a `.csv` for easy retrieval in the next session, we can take a look at the sumamry statistics below:
+
+```{r}
+#| eval: true
+#| message: false
+#| code-summary: "Loading and Exploring Transcript Data"
+
+library(tidyverse)
+
+# Load transcript data
+episodes <- read_csv("episodes_w_transcripts.csv")
+
+# Transcript length distribution
+episodes |>
+  mutate(transcript_length = nchar(ep_transcript)) |>
+  summarise(
+    min_length = min(transcript_length,na.rm=TRUE),
+    mean_length = mean(transcript_length, na.rm = TRUE),
+    median_length = median(transcript_length, na.rm = TRUE),
+    max_length = max(transcript_length, na.rm = TRUE)
+  )
+```
+
+Here is an example from the most recent episode (217):
+
+```{r}
+#| eval: true
+#| message: false
+#| code-summary: "Loading and Exploring Transcript Data"
+ 
+episodes$ep_transcript |> 
+    head(1) |> 
+    substr(1, 1000) |> 
+    strwrap(width = 80) |> 
+    cat(sep = "\n")
+```
+
+::: {.callout-warning appearance="simple"}
+## Issues scraping transcripts
+
+I did encounter issues when scraping the episode transcripts. I didn't manage to get transcripts for 142 episodes out of the 218 that were scraped.
+:::
+
+```{r}
+#| eval: true
+#| message: false
+#| code-summary: "Missing Episode Transcripts"
+ 
+sum(is.na(episodes$ep_transcript))
+```
+
+## RAG Implementation
+
+### Understanding RAG (Retrieval Augmented Generation)
+
+RAG enhances Large Language Models (LLMs) by:
+
+1.  **Retrieval**: Finding relevant information from a knowledge base
+2.  **Augmentation**: Adding that information to the LLM's context
+3.  **Generation**: Using the enriched context to generate accurate responses
+
+This prevents hallucinations and ensures answers are grounded in actual podcast content.
+
+### Vector Embeddings and Chunking
+
+The `chunking.r` and `build_store.r` scripts implement the RAG pipeline:
+
+#### Step 1: Text Chunking
+
+Transcripts are split into smaller chunks to improve retrieval precision, fit within LLM context windows and enable focused semantic search. For this we used chunks of 100 tokens, below is an example with the first two rows:
+
+::: {.callout-tip appearance="simple"}
+## Chunk size strategy
+
+Different chunk sizes can have different effects on your vector store. Play around with this parameter to see the impact it has on the vector store retrieval! I found that 100 worked quite well for this example but, it has implications depending on how you deploy your model, you might not be able to store smaller chunks.
+:::
+
+```{r}
+#| eval: true
+#| code-summary: "Chunking Transcripts"
+
+library(ragnar)
+
+# Chunk transcripts into ~100 token segments
+episodes |> 
+  select(ep_transcript) |> 
+  na.omit() |> 
+  head(2)-> to_parse
+   
+all_chunks <- markdown_chunk(
+  to_parse$ep_transcript, 
+  target_size = 100
+)
+
+cat(sprintf("Created %d chunks from %d transcripts\n", 
+            nrow(all_chunks), 
+            nrow(to_parse)))
+```
+
+#### Step 2: Vector Store Creation
+
+Chunks are converted to embeddings using OpenAI's `text-embedding-3-small` model and stored in a DuckDB database. We create our database as `rweeklypodcast.ragnar.duckdb`, insert into the store and create it:
+
+::: {.callout-important appearance="simple"}
+## Embedding model choice
+
+For this project we used the `text-embedding-3-small` model from Open AI, because we will be using `gpt 4.1` when building the chatbot. Make sure your model provider of choice and embedding are compatible with each other. Also, watch out some cost is incurred here!
+:::
+
+```{r}
+#| eval: false
+#| code-summary: "Building the Vector Store"
+
+# Create persistent store with embeddings
+store <- ragnar_store_create(
+  "rweeklypodcast.ragnar.duckdb", 
+  embed = embed_openai(model = "text-embedding-3-small"),
+  overwrite = TRUE
+)
+
+# Insert chunks (this calls OpenAI API for embeddings)
+ragnar_store_insert(store, all_chunks)
+
+# Build search index for BM25 and vector search
+ragnar_store_build_index(store)
+```
+
+#### Step 3: Retrieval Testing
+
+Now that we have created the store we can easily connect to it, and test it:
+
+```{r}
+#| eval: true
+#| code-summary: "Testing Retrieval"
+
+# Create the connection 
+store <- ragnar_store_connect("rweeklypodcast.ragnar.duckdb", read_only = TRUE)
+
+# Query the store
+test_result <- ragnar_retrieve(
+  store,
+  text = "Who are the hosts of the podcast?"
+)
+
+# Returns ranked chunks with similarity scores
+print(test_result)
+```
+
+This leaves us with a DuckDB with full-text search (BM25) and vector similarity. The chunk sizes are 100 tokens with the default overlap (0.5).
+
+::: {.callout-warning appearance="simple"}
+## Vector store size
+
+I quickly ran into limitations when creating the vector store. I initially wanted to store all the embeddings for the episodes I had transcripts for. But I quickly ran out of space, given I was going to deploy the shiny app on posit connect cloud and I only have the Basic plan. So make sure you carefully think about this!
+:::
+
+Now we can give the vector store to the llm as a tool and retrieve the relevant knowledge:
+
+```{r}
+#| eval: true
+#| code-summary: "Chat Object with a Tool"
+
+# Create chat object
+chat = ellmer::chat_openai(
+  system_prompt = "You answer questions about the R Weekly Highlights podcast."
+)
+
+# Register vector store as tool
+ragnar_register_tool_retrieve(chat, store)
+
+# Test it
+chat$chat("What did Eric and mike say about AI generated content in episdoe 217?")
+```
+
+## Shiny Chat Application
+
+For the Shiny app we leverage the `shinychat` package, which made it really easy to get started. I simply provided a system prompt and connected to the vector store we created earlier:
+
+```{r}
+#| eval: false
+#| code-summary: "Shiny App Structure"
+
+library(shiny)
+library(shinychat)
+library(ellmer)
+library(ragnar)
+library(bslib)
+
+# Load environment variables
+readRenviron(".Renviron")
+
+# Server
+server <- function(input, output, session) {
+  # Connect to the store inside the server function
+  store <- ragnar_store_connect("rweeklypodcast.ragnar.duckdb", read_only = TRUE)
+  
+  # Initialize chat with OpenAI
+  chat <- chat_openai(
+    system_prompt = "You are an enthusiastic and friendly assistant who loves the R Weekly Highlights podcast! 
+    You have access to all podcast transcripts through a RAG tool. 
+    Use the tool to find relevant information before answering questions.
+    
+    When answering:
+    - Be conversational and fun, like you're chatting with a fellow R enthusiast
+    - Cite specific episode numbers when possible (e.g., 'In episode 217, Eric mentioned...')
+    - If Eric or Mike said something funny or interesting, share that!
+    - Use emojis occasionally to keep things light 😊
+    - Keep answers concise but informative"
+  )
+  
+  # Register the RAG store as a tool
+  ragnar_register_tool_retrieve(chat, store)
+  
+  # Handle user input
+  observeEvent(input$chat_user_input, {
+    stream <- chat$stream_async(input$chat_user_input)
+    chat_append("chat", stream)
+  })
+}
+```
+
+For the theme we took inspiration from the podcast's colorful logo and defined a few colors:
+
+```{r}
+#| eval: false
+#| code-summary: "Custom Theme"
+
+# Custom theme matching the podcast logo colors
+app_theme <- bs_theme(
+  bg = "#F8F9FA",          
+  fg = "#2C3E50",
+  primary = "#9B59B6",      
+  secondary = "#F39C12",    
+  success = "#27AE60",      
+  info = "#3498DB",
+  base_font = font_google("Open Sans"),
+  heading_font = font_google("Roboto"),
+  font_scale = 1.0
+)
+
+```
+
+We also added some shadow effects to make the theme abit more fun:
+
+```{css}
+body {
+  background: linear-gradient(135deg, 
+    #E8F5F7 0%, #F5E8F7 25%, #FFF4E6 50%, 
+    #E8F7E8 75%, #E8F5F7 100%);
+  background-attachment: fixed;
+}
+
+.card {
+   box-shadow: 0 4px 6px rgba(155, 89, 182, 0.1), 0 1px 3px rgba(243, 156, 18, 0.08);
+   border: none;
+   background: rgba(255, 255, 255, 0.95);
+   backdrop-filter: blur(10px);
+}
+```
+
+We also added some interactive elements to get the user started, done by passing this string object to `chat_ui()` function.
+
+## Deployment
+
+To deploy the app we used Posit Connect Cloud, by doing the following:
+
+```{r}
+#| eval: false
+#| code-summary: "Deployment Script"
+
+library(rsconnect)
+
+# Validate required files
+if (!file.exists("rweeklypodcast.ragnar.duckdb")) {
+  stop("Database file not found! Run build_store.r first.")
+}
+
+# Deploy with all necessary files
+rsconnect::deployApp(
+  appDir = getwd(),
+  appFiles = c(
+    "app.R",
+    "rweeklypodcast.ragnar.duckdb",
+    ".Renviron"
+  ),
+  appName = "r-weekly-podcast-chat",
+  forceUpdate = TRUE,
+  launch.browser = TRUE
+)
+```
+
+::: {.callout-caution appearance="simple"}
+## Posit Connect Cloud Rate Limits
+
+I used Posit Connect Cloud for the deployment. I had to upgrade to the basic tier to make the vector store database fit for the deployment. It is also tied to my Open AI API key, which can run out depending on how many users use the chat, so if at any point the app stops working don't hate me!
+:::
+
+In any case you can clone the repo and try it out for yourself, if I ran out of credits!
+
+## Conclusions and Future Directions
+
+Thios project successfully implemented end-to-end RAG pipeline, from data collection to deployment. Then we built an intuitive chat interface using the shinychat package and an llm powered by out vector store that made podcast content searchable.
+
+Whilst we were able to deploy a proof of concept, we met some challenges along the way. The dynamic content scraping was challenging and as a result we have gaps in our knowledge base. Not only that, for the episodes we did have transcripts for, we couldn't put all of them into the vector store due to size limitation constraints with out deployment method of choice. Future versions may wish to address these issues. Furthermore, I noticed some start up delay when first booting up the app and sometimes when chatting. I maxed out the compute, but having more robust compute availability might help in that respect. Future versions may wish to add more direct references to the output from the LLM when chatting. I am sure some of our colleagues in the community can give these a shot!
+
+## References
+
+-   **R Weekly Highlights Podcast**: <https://rweekly.fireside.fm/>
+-   **Ragnar Package**: <https://github.com/posit-dev/ragnar>
+-   **Shinychat Documentation**: <https://posit-dev.github.io/shinychat/>
+-   **Ellmer Package**: <https://ellmer.tidyverse.org/>
+-   **OpenAI API**: <https://platform.openai.com/docs>

@@ -1,0 +1,21 @@
+# R Environment
+.Renviron
+.Rprofile
+.Rhistory
+.RData
+.Ruserdata
+.index_files
+
+# DuckDB files
+*.duckdb.wal
+
+# API Keys and secrets
+*.env
+.env
+
+# macOS
+.DS_Store
+
+# Posit
+*.posit
+.rsconnect
