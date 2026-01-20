@@ -15,8 +15,7 @@ execute:
 
 ## Introduction
 
-This project demonstrates how to build an AI-powered chatbot that answers questions about the R Weekly Highlights podcast content using Retrieval Augmented Generation (RAG). The application allows users to query transcripts from the R Weekly Highlights podcast through a conversational interface. The idea came to me after listening to episode 217, where [Yann Tourman's episode length analysis](https://bsky.app/profile/yannco.bsky.social/post/3mbarm75kik2j) was shouted out. I thought this would be a great use case to apply the [Retrieval-Augmented Generation: Setting up a Knowledge Store in R](https://www.jumpingrivers.com/blog/retrieval-augmented-generation-database-workflow-r/), in practice! [You can check out the 
-resulting Shiny app here](https://jokasan-r-weekly-chatbot.share.connect.posit.cloud). So without further ado let's begin! 
+This project demonstrates how to build an AI-powered chatbot that answers questions about the R Weekly Highlights podcast content using Retrieval Augmented Generation (RAG). The application allows users to query transcripts from the R Weekly Highlights podcast through a conversational interface. The idea came to me after listening to episode 217, where [Yann Tourman's episode length analysis](https://bsky.app/profile/yannco.bsky.social/post/3mbarm75kik2j) was shouted out. I thought this would be a great use case to apply the [Retrieval-Augmented Generation: Setting up a Knowledge Store in R](https://www.jumpingrivers.com/blog/retrieval-augmented-generation-database-workflow-r/), in practice! [You can check out the resulting Shiny app here](https://jokasan-r-weekly-chatbot.share.connect.posit.cloud). So without further ado let's begin!
 
 ### Project Goals
 
@@ -408,7 +407,26 @@ body {
 }
 ```
 
-We also added some interactive elements to get the user started, done by passing this string object to `chat_ui()` function.
+We also added some interactive elements to get the user started, done by passing this string object to `chat_ui()` function:
+
+```{r}
+#| eval: false
+#| code-summary: "Custom Messages"
+
+# Custom messages on app landing page
+messages <- '
+🎙️ **Hello, R enthusiast!** I\'m your friendly R Weekly Highlights podcast assistant! 
+
+I\'ve listened to episodes 200-217 so you don\'t have to search through hours of content. Ask me anything about what Eric and Mike discussed!
+⚠️ Whilst RAG with llm is powerful, it might not always ahve the correct answer. Please check out the episodes directly for more details!
+
+💡 **Try these to get started:**
+
+* <span class="suggestion">🎯 Who are the hosts and where can I find them?</span>
+* <span class="suggestion">🐍 What did Mike and Eric say about Python and R working together in episode 217?</span>
+* <span class="suggestion submit">📦 Tell me about cool packages they mentioned in episode 204</span>
+'
+```
 
 ## Deployment
 
@@ -449,9 +467,9 @@ In any case you can clone the repo and try it out for yourself, if I ran out of 
 
 ## Conclusions and Future Directions
 
-Thios project successfully implemented end-to-end RAG pipeline, from data collection to deployment. Then we built an intuitive chat interface using the shinychat package and an llm powered by out vector store that made podcast content searchable.
+This project successfully implemented end-to-end RAG pipeline, from data collection to deployment. Then we built an intuitive chat interface using the shinychat package and an llm powered by out vector store that made podcast content searchable.
 
-Whilst we were able to deploy a proof of concept, we met some challenges along the way. The dynamic content scraping was challenging and as a result we have gaps in our knowledge base. Not only that, for the episodes we did have transcripts for, we couldn't put all of them into the vector store due to size limitation constraints with out deployment method of choice. Future versions may wish to address these issues. Furthermore, I noticed some start up delay when first booting up the app and sometimes when chatting. I maxed out the compute, but having more robust compute availability might help in that respect. Future versions may wish to add more direct references to the output from the LLM when chatting. I am sure some of our colleagues in the community can give these a shot!
+Whilst we were able to deploy a proof of concept, we met some challenges along the way. The dynamic content scraping was challenging and as a result we have gaps in our knowledge base. Not only that, for the episodes we did have transcripts for, we couldn't put all of them into the vector store due to size limitation constraints with out deployment method of choice. Future versions may wish to address these issues. Furthermore, I noticed some start up delay when first booting up the app and sometimes when chatting. I maxed out the compute, but having more robust compute availability might help in that respect. Future versions may wish to add more direct references to the output from the LLM when chatting, improving overall user experience. I am sure some of our colleagues in the community can give these a shot!
 
 ## References
 

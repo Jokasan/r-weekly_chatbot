@@ -509,14 +509,16 @@ moving. So we'll see how far we</code></pre>
 ● #&gt; [{"doc_id":1,"chunk_id":582,"start":29050,"end":29147,"cosine_distance":0…</code></pre>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>In episode 217 of the R Weekly Highlights podcast, Eric and Mike discussed 
-AI-generated content and mentioned an “AI generated package.” Eric noted, “how 
-it got there, I have no idea. I mean, it sounds like…” (the thought seems to 
-trail off). Overall, they expressed interest in experimenting with new AI tools
-and packages, and mentioned that every week there’s almost always something new
-to talk about in the world of large language models. There’s a sense of 
-curiosity and a bit of surprise about how quickly and pervasively AI-generated 
-content is spreading, especially in the R programming ecosystem.</code></pre>
+<pre><code>In episode 217, Eric and Mike discussed AI-generated content, mentioning that 
+there is an "AI generated package" and expressing some curiosity and surprise 
+about how it was created—Eric said, "I will say though, how it got there, I 
+have no idea. I mean, it sounds like..." They also voiced interest in trying 
+out an AI generator after the episode, with comments like, "I definitely want 
+to play with this after this episode probably. It does some unique 
+generator..."
+
+If you want the full conversation or specific opinions they shared, let me 
+know!</code></pre>
 </div>
 </div>
 </section>
@@ -604,7 +606,25 @@ content is spreading, especially in the R programming ecosystem.</code></pre>
 <span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
-<p>We also added some interactive elements to get the user started, done by passing this string object to <code>chat_ui()</code> function.</p>
+<p>We also added some interactive elements to get the user started, done by passing this string object to <code>chat_ui()</code> function:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Custom Messages</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Custom messages on app landing page</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>messages <span class="ot">&lt;-</span> <span class="st">'</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a><span class="st">🎙️ **Hello, R enthusiast!** I</span><span class="sc">\'</span><span class="st">m your friendly R Weekly Highlights podcast assistant! </span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="st">I</span><span class="sc">\'</span><span class="st">ve listened to episodes 200-217 so you don</span><span class="sc">\'</span><span class="st">t have to search through hours of content. Ask me anything about what Eric and Mike discussed!</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a><span class="st">⚠️ Whilst RAG with llm is powerful, it might not always ahve the correct answer. Please check out the episodes directly for more details!</span></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a><span class="st">💡 **Try these to get started:**</span></span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a><span class="st">* &lt;span class="suggestion"&gt;🎯 Who are the hosts and where can I find them?&lt;/span&gt;</span></span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a><span class="st">* &lt;span class="suggestion"&gt;🐍 What did Mike and Eric say about Python and R working together in episode 217?&lt;/span&gt;</span></span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a><span class="st">* &lt;span class="suggestion submit"&gt;📦 Tell me about cool packages they mentioned in episode 204&lt;/span&gt;</span></span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a><span class="st">'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
 </section>
 <section id="deployment" class="level2">
 <h2 class="anchored" data-anchor-id="deployment">Deployment</h2>
@@ -612,25 +632,25 @@ content is spreading, especially in the R programming ecosystem.</code></pre>
 <div class="cell">
 <details class="code-fold">
 <summary>Deployment Script</summary>
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rsconnect)</span>
-<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Validate required files</span></span>
-<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">file.exists</span>(<span class="st">"rweeklypodcast.ragnar.duckdb"</span>)) {</span>
-<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stop</span>(<span class="st">"Database file not found! Run build_store.r first."</span>)</span>
-<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Deploy with all necessary files</span></span>
-<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>rsconnect<span class="sc">::</span><span class="fu">deployApp</span>(</span>
-<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">appDir =</span> <span class="fu">getwd</span>(),</span>
-<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">appFiles =</span> <span class="fu">c</span>(</span>
-<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">"app.R"</span>,</span>
-<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>    <span class="st">"rweeklypodcast.ragnar.duckdb"</span>,</span>
-<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">".Renviron"</span></span>
-<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a>  ),</span>
-<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">appName =</span> <span class="st">"r-weekly-podcast-chat"</span>,</span>
-<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">forceUpdate =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">launch.browser =</span> <span class="cn">TRUE</span></span>
-<span id="cb23-19"><a href="#cb23-19" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rsconnect)</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Validate required files</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">file.exists</span>(<span class="st">"rweeklypodcast.ragnar.duckdb"</span>)) {</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stop</span>(<span class="st">"Database file not found! Run build_store.r first."</span>)</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Deploy with all necessary files</span></span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>rsconnect<span class="sc">::</span><span class="fu">deployApp</span>(</span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">appDir =</span> <span class="fu">getwd</span>(),</span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">appFiles =</span> <span class="fu">c</span>(</span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">"app.R"</span>,</span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a>    <span class="st">"rweeklypodcast.ragnar.duckdb"</span>,</span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">".Renviron"</span></span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">appName =</span> <span class="st">"r-weekly-podcast-chat"</span>,</span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">forceUpdate =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">launch.browser =</span> <span class="cn">TRUE</span></span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
 <div class="callout callout-style-simple callout-caution callout-titled">
@@ -650,8 +670,8 @@ content is spreading, especially in the R programming ecosystem.</code></pre>
 </section>
 <section id="conclusions-and-future-directions" class="level2">
 <h2 class="anchored" data-anchor-id="conclusions-and-future-directions">Conclusions and Future Directions</h2>
-<p>Thios project successfully implemented end-to-end RAG pipeline, from data collection to deployment. Then we built an intuitive chat interface using the shinychat package and an llm powered by out vector store that made podcast content searchable.</p>
-<p>Whilst we were able to deploy a proof of concept, we met some challenges along the way. The dynamic content scraping was challenging and as a result we have gaps in our knowledge base. Not only that, for the episodes we did have transcripts for, we couldn’t put all of them into the vector store due to size limitation constraints with out deployment method of choice. Future versions may wish to address these issues. Furthermore, I noticed some start up delay when first booting up the app and sometimes when chatting. I maxed out the compute, but having more robust compute availability might help in that respect. Future versions may wish to add more direct references to the output from the LLM when chatting. I am sure some of our colleagues in the community can give these a shot!</p>
+<p>This project successfully implemented end-to-end RAG pipeline, from data collection to deployment. Then we built an intuitive chat interface using the shinychat package and an llm powered by out vector store that made podcast content searchable.</p>
+<p>Whilst we were able to deploy a proof of concept, we met some challenges along the way. The dynamic content scraping was challenging and as a result we have gaps in our knowledge base. Not only that, for the episodes we did have transcripts for, we couldn’t put all of them into the vector store due to size limitation constraints with out deployment method of choice. Future versions may wish to address these issues. Furthermore, I noticed some start up delay when first booting up the app and sometimes when chatting. I maxed out the compute, but having more robust compute availability might help in that respect. Future versions may wish to add more direct references to the output from the LLM when chatting, improving overall user experience. I am sure some of our colleagues in the community can give these a shot!</p>
 </section>
 <section id="references" class="level2">
 <h2 class="anchored" data-anchor-id="references">References</h2>
