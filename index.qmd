@@ -30,6 +30,17 @@ This project demonstrates how to build an AI-powered chatbot that answers questi
 
 ## Data Understanding
 
+Let's load all the dependencies we need before we get started:
+
+```{r}
+#| eval: true
+#| code-summary: "Loading Dependencies"
+#| message: false
+#| warning: false
+
+pacman::p_load(collapse,rvest,stringi,glue,tidyverse,httr,ragnar,ellmer,shiny,shinychat,bslib,rsconnect)
+```
+
 ### Scraping Podcast Transcripts
 
 The first challenge was extracting transcripts from the podcast hosting platform (Podhome.fm). [I used the script Yann shared](https://github.com/iamYannC/r-podcast/blob/main/R/r%20weekly%20podcast%20scrape.R), but with a few key distinctions. Initial attempts to scrape transcript content directly from the page HTML failed because transcripts are loaded dynamically via JavaScript. So instead we had to use the scrape the episodes using a two-step approach:
@@ -158,8 +169,6 @@ Once that was done, we wrote the file to a `.csv` for easy retrieval in the next
 #| message: false
 #| code-summary: "Loading and Exploring Transcript Data"
 
-library(tidyverse)
-
 # Load transcript data
 episodes <- read_csv("episodes_w_transcripts.csv")
 
@@ -231,8 +240,6 @@ Different chunk sizes can have different effects on your vector store. Play arou
 ```{r}
 #| eval: true
 #| code-summary: "Chunking Transcripts"
-
-library(ragnar)
 
 # Chunk transcripts into ~100 token segments
 episodes |> 
@@ -332,12 +339,6 @@ For the Shiny app we leverage the `shinychat` package, which made it really easy
 ```{r}
 #| eval: false
 #| code-summary: "Shiny App Structure"
-
-library(shiny)
-library(shinychat)
-library(ellmer)
-library(ragnar)
-library(bslib)
 
 # Load environment variables
 readRenviron(".Renviron")
@@ -439,8 +440,6 @@ To deploy the app we used Posit Connect Cloud, by doing the following:
 ```{r}
 #| eval: false
 #| code-summary: "Deployment Script"
-
-library(rsconnect)
 
 # Validate required files
 if (!file.exists("rweeklypodcast.ragnar.duckdb")) {
